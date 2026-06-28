@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client AI Disclosure | Attorney Broker Services</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #0C3057; --navy-deep: #07203D; --gold: #C8922A; --gold-bright: #E0AC4A;
+    --cream: #F4F1EA; --cream-dim: #E8E2D4; --ink: #1B2430; --paper: #FFFDF8;
+    --green-ok: #3E6B4F; --green-tier-bg: #EAF3ED; --red-flag: #8C2F2F; --rule: #D8D0BC;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink); font-family: Georgia, 'Times New Roman', serif; line-height: 1.5; }
+  header { background: var(--navy); color: var(--cream); padding: 26px 24px 20px; border-bottom: 4px solid var(--gold); }
+  .header-inner { max-width: 600px; margin: 0 auto; }
+  header h1 { margin: 0; font-size: 1.45rem; font-weight: normal; }
+  header h1 span { color: var(--gold-bright); }
+  .subhead { margin: 6px 0 0; font-size: 0.85rem; color: var(--cream-dim); font-style: italic; }
+  main { max-width: 600px; margin: 0 auto; padding: 32px 24px 80px; }
+  .card { background: var(--paper); border: 1px solid var(--rule); border-left: 5px solid var(--gold); box-shadow: 0 2px 0 rgba(12,48,87,0.05), 0 8px 24px rgba(12,48,87,0.06); padding: 28px 30px 30px; }
+  .card-purpose { margin: 0 0 24px; font-size: 0.9rem; color: #6B6354; font-style: italic; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-family: 'Courier New', Courier, monospace; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy); margin-bottom: 6px; }
+  input[type="text"] { width: 100%; padding: 10px 14px; font-family: Georgia, serif; font-size: 1rem; border: 1px solid #C9BFA6; background: var(--paper); color: var(--ink); }
+  input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+  button.btn { font-family: Georgia, serif; font-size: 0.95rem; padding: 12px 22px; border: none; cursor: pointer; }
+  .btn-primary { background: var(--gold); color: var(--navy); font-weight: bold; width: 100%; }
+  .btn-primary:hover { background: var(--gold-bright); }
+  .btn-primary:disabled { background: #C9BFA6; color: #8A8270; cursor: not-allowed; }
+  .btn-secondary { background: transparent; color: var(--navy); border: 1px solid var(--navy); }
+  .btn-secondary:hover { background: var(--cream-dim); }
+  .nav-row { display: flex; gap: 12px; margin-top: 20px; }
+  .nav-row .btn { flex: 1; }
+  .generating-row { display: none; align-items: center; gap: 10px; margin-top: 16px; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: var(--navy); justify-content: center; }
+  .generating-row.active { display: flex; }
+  .stamp-spin { width: 16px; height: 16px; border: 2px solid var(--cream-dim); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-note { display: none; margin-top: 16px; padding: 14px 18px; background: #F8EDED; border: 1px solid var(--red-flag); color: var(--red-flag); font-size: 0.9rem; }
+  .error-note.active { display: block; }
+  .sig-canvas-wrap { border: 2px dashed var(--rule); background: var(--paper); margin-bottom: 10px; touch-action: none; }
+  .sig-canvas-wrap canvas { display: block; width: 100%; height: 160px; cursor: crosshair; }
+  .sig-clear-btn { background: none; border: none; color: #8A8270; font-size: 0.8rem; text-decoration: underline; cursor: pointer; padding: 0; margin-bottom: 16px; }
+  .signing-banner { padding: 12px 16px; background: #FBF3E3; border-left: 3px solid var(--gold); font-size: 0.88rem; margin-bottom: 18px; font-weight: bold; }
+  footer { text-align: center; padding: 24px; font-size: 0.78rem; color: #8A8270; font-style: italic; }
+  #pinGate { position: fixed; inset: 0; background: var(--navy); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 24px; }
+  #pinGate.hidden { display: none; }
+  .pin-card { background: var(--paper); border-top: 4px solid var(--gold); padding: 36px 32px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+  .pin-card h2 { margin: 0 0 6px; color: var(--navy); font-size: 1.3rem; font-weight: normal; }
+  .pin-card p { margin: 0 0 22px; font-size: 0.88rem; color: #6B6354; font-style: italic; }
+  .pin-input { width: 100%; font-family: 'Courier New', Courier, monospace; font-size: 1.4rem; letter-spacing: 0.5em; text-align: center; padding: 12px 10px; border: 1px solid #C9BFA6; background: var(--cream); color: var(--ink); margin-bottom: 16px; }
+  .pin-error { min-height: 1.2em; color: var(--red-flag); font-size: 0.82rem; margin-bottom: 14px; font-family: 'Courier New', Courier, monospace; }
+  .pin-submit { width: 100%; background: var(--navy); color: var(--cream); padding: 12px; font-family: Georgia, serif; font-size: 0.95rem; border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="pinGate">
+  <div class="pin-card">
+    <h2>Client AI Disclosure</h2>
+    <p>Enter your access PIN to continue</p>
+    <input type="password" inputmode="numeric" maxlength="6" class="pin-input" id="pinInput" placeholder="&middot;&middot;&middot;&middot;">
+    <div class="pin-error" id="pinError"></div>
+    <button class="pin-submit" id="pinSubmit">Unlock</button>
+  </div>
+</div>
+
+<div id="appShell" style="display:none;">
+
+<header>
+  <div class="header-inner">
+    <h1>Client AI <span>Disclosure</span></h1>
+    <p class="subhead">Technology &amp; AI Use Disclosure &mdash; Attorney Broker Services</p>
+  </div>
+</header>
+
+<main>
+  <div class="card" id="stepCard">
+    <p class="card-purpose">Create a disclosure for your client, then sign in person or send a link.</p>
+
+    <div class="field">
+      <label for="agent-name-input">Your full name</label>
+      <input type="text" id="agent-name-input" placeholder="Full name">
+    </div>
+    <div class="field">
+      <label for="agent-license-input">License number</label>
+      <input type="text" id="agent-license-input" placeholder="License #">
+    </div>
+    <div class="field">
+      <label for="client-name-input">Client name</label>
+      <input type="text" id="client-name-input" placeholder="Full name">
+    </div>
+    <div class="field">
+      <label for="client2-name-input">Second client (optional)</label>
+      <input type="text" id="client2-name-input" placeholder="Full name">
+    </div>
+
+    <button class="btn btn-primary" id="generateBtn" onclick="handleGenerate()">Generate Disclosure</button>
+
+    <div class="generating-row" id="generatingRow">
+      <div class="stamp-spin"></div>
+      <span>Generating disclosure document&hellip;</span>
+    </div>
+    <div class="error-note" id="errorNote"></div>
+  </div>
+</main>
+
+<footer>
+  Attorney Broker Services, LLC &middot; For informational purposes only &mdash; not legal advice.
+</footer>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://petfaclkzdudyvyhifaj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_H6IVVyBLqTTsub1zH_igSw_EqimRQ9Y';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const AGENT_KEY = 'client_disclosure_agent';
+let agentInfo = null;
+let currentDisclosureId = null;
+let currentUnsignedPdfUrl = null;
+let signaturePad = null;
+let capturedAgentSignature = null;
+
+function loadAgentInfo() {
+  try {
+    const stored = localStorage.getItem(AGENT_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      document.getElementById('agent-name-input').value = parsed.name || '';
+      document.getElementById('agent-license-input').value = parsed.license || '';
+    }
+  } catch (e) {}
+}
+
+function saveAgentInfo(name, license) {
+  try { localStorage.setItem(AGENT_KEY, JSON.stringify({ name, license })); } catch (e) {}
+}
+
+async function handleGenerate() {
+  const agentName = document.getElementById('agent-name-input').value.trim();
+  const agentLicense = document.getElementById('agent-license-input').value.trim();
+  const clientName = document.getElementById('client-name-input').value.trim();
+  const client2Name = document.getElementById('client2-name-input').value.trim();
+  const btn = document.getElementById('generateBtn');
+  const generatingRow = document.getElementById('generatingRow');
+  const errorNote = document.getElementById('errorNote');
+
+  errorNote.classList.remove('active');
+
+  if (!agentName || !clientName) {
+    errorNote.textContent = 'Your name and the client name are required.';
+    errorNote.classList.add('active');
+    return;
+  }
+
+  saveAgentInfo(agentName, agentLicense);
+
+  btn.disabled = true;
+  generatingRow.classList.add('active');
+
+  try {
+    const { data: created, error: createError } = await sb.rpc('create_disclosure', {
+      p_agent_email: 'mike@attorneybrokerservices.com',
+      p_agent_name: agentName,
+      p_agent_license_number: agentLicense || null,
+      p_brokerage_name: 'Attorney Broker Services, LLC',
+      p_client_name: clientName,
+      p_client_2_name: client2Name || null,
+    });
+
+    if (createError) throw new Error('Could not save the disclosure: ' + createError.message);
+
+    currentDisclosureId = created.id;
+
+    const pdfResponse = await fetch('/.netlify/functions/generateDisclosurePdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disclosureId: currentDisclosureId }),
+    });
+
+    if (!pdfResponse.ok) {
+      const errBody = await pdfResponse.json().catch(() => ({}));
+      throw new Error(errBody.error || 'PDF generation failed (status ' + pdfResponse.status + ')');
+    }
+
+    const pdfResult = await pdfResponse.json();
+    showReadyToSign(currentDisclosureId, pdfResult.file_url);
+
+  } catch (err) {
+    console.error('Generate error:', err);
+    errorNote.textContent = err.message || "Couldn't generate the disclosure. Check your connection and try again.";
+    errorNote.classList.add('active');
+    btn.disabled = false;
+    generatingRow.classList.remove('active');
+  }
+}
+
+function showReadyToSign(disclosureId, pdfUrl) {
+  currentUnsignedPdfUrl = pdfUrl;
+  const card = document.getElementById('stepCard');
+  card.innerHTML = `
+    <div style="text-align:center; padding: 20px 0;">
+      <div style="width:56px; height:56px; background:var(--green-tier-bg); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#3E6B4F" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <h2 style="margin-bottom:6px; font-size:1.25rem; color:var(--navy); font-weight:normal;">Disclosure Generated</h2>
+      <p style="margin-bottom:24px; font-size:0.9rem; color:#6B6354; font-style:italic;">Choose how to collect the client's signature.</p>
+      <div style="display:flex; flex-direction:column; gap:10px; max-width:340px; margin:0 auto;">
+        <a href="${pdfUrl}" target="_blank" class="btn btn-secondary" style="text-decoration:none; display:block;">View unsigned PDF</a>
+        <button class="btn btn-primary" id="startSigningBtn">Sign now, in person &rarr;</button>
+        <button class="btn btn-secondary" id="startRemoteBtn">Send a link to sign remotely &rarr;</button>
+      </div>
+    </div>`;
+  document.getElementById('startSigningBtn').addEventListener('click', () => renderSigningScreen(disclosureId));
+  document.getElementById('startRemoteBtn').addEventListener('click', () => renderRemoteSigningStart(disclosureId));
+}
+
+function initSignaturePad() {
+  const canvas = document.getElementById('sigCanvas');
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  const parent = canvas.parentElement;
+  canvas.width = parent.getBoundingClientRect().width * ratio;
+  canvas.height = 160 * ratio;
+  canvas.getContext('2d').scale(ratio, ratio);
+  signaturePad = new SignaturePad(canvas, { penColor: 'rgb(20,30,40)', backgroundColor: 'rgba(0,0,0,0)' });
+}
+
+function renderSigningScreen(disclosureId, step = 'agent') {
+  const card = document.getElementById('stepCard');
+  if (step === 'agent') {
+    card.innerHTML = `
+      <h2 style="font-size:1.25rem; color:var(--navy); font-weight:normal; text-align:center; margin-bottom:6px;">Step 1 of 2 &mdash; Agent Signs</h2>
+      <p style="text-align:center; font-size:0.9rem; color:#6B6354; font-style:italic; margin-bottom:20px;">Sign below to confirm you've provided this disclosure to the client.</p>
+      <div class="sig-canvas-wrap"><canvas id="sigCanvas"></canvas></div>
+      <button class="sig-clear-btn" id="sigClearBtn">Clear</button>
+      <div class="error-note" id="signingError"></div>
+      <div class="nav-row">
+        <button class="btn btn-secondary" id="sigCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="sigNextBtn">Next &mdash; Client Signs &rarr;</button>
+      </div>`;
+    initSignaturePad();
+    document.getElementById('sigClearBtn').addEventListener('click', () => signaturePad.clear());
+    document.getElementById('sigCancelBtn').addEventListener('click', () => showReadyToSign(disclosureId, currentUnsignedPdfUrl));
+    document.getElementById('sigNextBtn').addEventListener('click', () => {
+      const errorEl = document.getElementById('signingError');
+      if (signaturePad.isEmpty()) {
+        errorEl.textContent = 'Please sign before continuing.';
+        errorEl.classList.add('active');
+        return;
+      }
+      capturedAgentSignature = signaturePad.toDataURL('image/png');
+      renderSigningScreen(disclosureId, 'client');
+    });
+  } else if (step === 'client') {
+    card.innerHTML = `
+      <h2 style="font-size:1.25rem; color:var(--navy); font-weight:normal; text-align:center; margin-bottom:6px;">Step 2 of 2</h2>
+      <div class="signing-banner">Hand the device to the client. They should review the disclosure and sign below.</div>
+      <div class="field">
+        <label for="clientTypedName">Client: type your full legal name</label>
+        <input type="text" id="clientTypedName" placeholder="Full legal name">
+      </div>
+      <div class="sig-canvas-wrap"><canvas id="sigCanvas"></canvas></div>
+      <button class="sig-clear-btn" id="sigClearBtn">Clear</button>
+      <div class="error-note" id="signingError"></div>
+      <div class="generating-row" id="sealingRow">
+        <div class="stamp-spin"></div>
+        <span>Sealing disclosure&hellip;</span>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-secondary" id="sigBackBtn">Back</button>
+        <button class="btn btn-primary" id="sigSubmitBtn">Confirm &amp; Submit</button>
+      </div>`;
+    initSignaturePad();
+    document.getElementById('sigClearBtn').addEventListener('click', () => signaturePad.clear());
+    document.getElementById('sigBackBtn').addEventListener('click', () => renderSigningScreen(disclosureId, 'agent'));
+    document.getElementById('sigSubmitBtn').addEventListener('click', () => handleClientSign(disclosureId));
+  }
+}
+
+async function handleClientSign(disclosureId) {
+  const typedName = document.getElementById('clientTypedName').value.trim();
+  const errorEl = document.getElementById('signingError');
+  const sealingRow = document.getElementById('sealingRow');
+  const submitBtn = document.getElementById('sigSubmitBtn');
+
+  errorEl.classList.remove('active');
+  if (!typedName) { errorEl.textContent = 'Please type your full name.'; errorEl.classList.add('active'); return; }
+  if (signaturePad.isEmpty()) { errorEl.textContent = 'Please sign before submitting.'; errorEl.classList.add('active'); return; }
+
+  const clientSignature = signaturePad.toDataURL('image/png');
+  submitBtn.disabled = true;
+  sealingRow.classList.add('active');
+
+  try {
+    const response = await fetch('/.netlify/functions/sealDisclosure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        disclosureId, agentSignatureDataUrl: capturedAgentSignature,
+        clientSignatureDataUrl: clientSignature, clientTypedName: typedName,
+      }),
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody.error || 'Sealing failed (status ' + response.status + ')');
+    }
+    const result = await response.json();
+    showSigningComplete(result.file_url);
+  } catch (err) {
+    console.error('Sealing error:', err);
+    errorEl.textContent = err.message || "Couldn't complete signing. Check your connection and try again.";
+    errorEl.classList.add('active');
+    submitBtn.disabled = false;
+    sealingRow.classList.remove('active');
+  }
+}
+
+function showSigningComplete(executedPdfUrl) {
+  const card = document.getElementById('stepCard');
+  card.innerHTML = `
+    <div style="text-align:center; padding: 20px 0;">
+      <div style="width:56px; height:56px; background:var(--green-tier-bg); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#3E6B4F" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <h2 style="margin-bottom:6px; font-size:1.25rem; color:var(--navy); font-weight:normal;">Both Parties Have Signed</h2>
+      <p style="margin-bottom:24px; font-size:0.9rem; color:#6B6354; font-style:italic;">The executed disclosure has been saved.</p>
+      <div style="display:flex; flex-direction:column; gap:10px; max-width:340px; margin:0 auto;">
+        <a href="${executedPdfUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none; display:block;">Download executed disclosure</a>
+        <button class="btn btn-secondary" id="newDisclosureBtn">Start a new disclosure</button>
+      </div>
+    </div>`;
+  document.getElementById('newDisclosureBtn').addEventListener('click', () => location.reload());
+}
+
+// ---------- REMOTE SIGNING ----------
+function renderRemoteSigningStart(disclosureId) {
+  const card = document.getElementById('stepCard');
+  card.innerHTML = `
+    <h2 style="font-size:1.25rem; color:var(--navy); font-weight:normal; text-align:center; margin-bottom:6px;">Agent Signature</h2>
+    <p style="text-align:center; font-size:0.9rem; color:#6B6354; font-style:italic; margin-bottom:20px;">Sign below. The client will sign next, on their own device.</p>
+    <div class="sig-canvas-wrap"><canvas id="sigCanvas"></canvas></div>
+    <button class="sig-clear-btn" id="sigClearBtn">Clear</button>
+    <div class="error-note" id="signingError"></div>
+    <div class="generating-row" id="linkGeneratingRow">
+      <div class="stamp-spin"></div>
+      <span>Creating signing link&hellip;</span>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-secondary" id="remoteCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="remoteNextBtn">Create signing link &rarr;</button>
+    </div>`;
+  initSignaturePad();
+  document.getElementById('sigClearBtn').addEventListener('click', () => signaturePad.clear());
+  document.getElementById('remoteCancelBtn').addEventListener('click', () => showReadyToSign(disclosureId, currentUnsignedPdfUrl));
+  document.getElementById('remoteNextBtn').addEventListener('click', () => handleCreateSigningLink(disclosureId));
+}
+
+async function handleCreateSigningLink(disclosureId) {
+  const errorEl = document.getElementById('signingError');
+  const generatingRow = document.getElementById('linkGeneratingRow');
+  const nextBtn = document.getElementById('remoteNextBtn');
+
+  errorEl.classList.remove('active');
+  if (signaturePad.isEmpty()) { errorEl.textContent = 'Please sign before continuing.'; errorEl.classList.add('active'); return; }
+
+  const agentSignature = signaturePad.toDataURL('image/png');
+  nextBtn.disabled = true;
+  generatingRow.classList.add('active');
+
+  try {
+    const response = await fetch('/.netlify/functions/createDisclosureSigningLink', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disclosureId, agentSignatureDataUrl: agentSignature }),
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody.error || 'Could not create signing link (status ' + response.status + ')');
+    }
+    const result = await response.json();
+    showSigningLinkReady(result.signing_url);
+  } catch (err) {
+    console.error('Create signing link error:', err);
+    errorEl.textContent = err.message || "Couldn't create the signing link. Check your connection and try again.";
+    errorEl.classList.add('active');
+    nextBtn.disabled = false;
+    generatingRow.classList.remove('active');
+  }
+}
+
+function showSigningLinkReady(signingUrl) {
+  const card = document.getElementById('stepCard');
+  card.innerHTML = `
+    <div style="text-align:center; padding: 10px 0;">
+      <div style="width:56px; height:56px; background:var(--green-tier-bg); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#3E6B4F" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <h2 style="margin-bottom:6px; font-size:1.25rem; color:var(--navy); font-weight:normal;">Link Ready</h2>
+      <p style="margin-bottom:18px; font-size:0.9rem; color:#6B6354; font-style:italic;">Send this to the client. It opens on their device for them to review and sign.</p>
+      <div style="display:flex; gap:8px; max-width:420px; margin:0 auto 18px;">
+        <input type="text" id="signingLinkInput" readonly value="${signingUrl}" style="flex:1; font-family:'Courier New',monospace; font-size:0.82rem;">
+        <button class="btn btn-primary" id="copyLinkBtn" style="width:auto; padding:10px 16px;">Copy</button>
+      </div>
+      <p style="font-size:0.8rem; color:#8A8270; font-style:italic;">The link expires in 7 days and can only be used once.</p>
+    </div>`;
+  document.getElementById('copyLinkBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(signingUrl).then(() => {
+      const btn = document.getElementById('copyLinkBtn');
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    });
+  });
+}
+
+// ---------- PIN GATE ----------
+const DISCLOSURE_PIN = "9156";
+const PIN_KEY = "client_disclosure_unlocked";
+const dPinGate = document.getElementById('pinGate');
+const dAppShell = document.getElementById('appShell');
+const dPinInput = document.getElementById('pinInput');
+const dPinError = document.getElementById('pinError');
+const dPinSubmit = document.getElementById('pinSubmit');
+
+function unlockDisclosureTool() {
+  dPinGate.classList.add('hidden');
+  dAppShell.style.display = 'block';
+  loadAgentInfo();
+}
+function checkDisclosurePin() {
+  const entered = dPinInput.value.trim();
+  if (entered === DISCLOSURE_PIN) {
+    try { localStorage.setItem(PIN_KEY, "true"); } catch (e) {}
+    dPinError.textContent = '';
+    unlockDisclosureTool();
+  } else {
+    dPinError.textContent = "That PIN didn't match. Try again.";
+    dPinInput.value = '';
+    dPinInput.focus();
+  }
+}
+dPinSubmit.addEventListener('click', checkDisclosurePin);
+dPinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkDisclosurePin(); });
+
+(function initPin() {
+  let alreadyUnlocked = false;
+  try { alreadyUnlocked = localStorage.getItem(PIN_KEY) === "true"; } catch (e) {}
+  if (alreadyUnlocked) { unlockDisclosureTool(); } else { dPinInput.focus(); }
+})();
+</script>
+
+</body>
+</html>
